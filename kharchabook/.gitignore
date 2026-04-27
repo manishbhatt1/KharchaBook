@@ -1,0 +1,10 @@
+target/
+apache-maven-3.9.6/
+.m2/
+.jetty-temp/
+*.ps1
+*.bat
+.github/
+*.class
+*.war
+.DS_Store
