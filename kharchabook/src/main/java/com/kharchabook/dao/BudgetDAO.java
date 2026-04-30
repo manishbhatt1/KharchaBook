@@ -1,194 +1,98 @@
 package com.kharchabook.dao;
 
-import com.kharchabook.model.BillReminder;
+import com.kharchabook.model.Budget;
 import com.kharchabook.util.DBUtil;
 
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
+import java.sql.*;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
-public class BillReminderDAO {
+public class BudgetDAO {
 
-    public List<BillReminder> findByUser(int userId) throws SQLException {
-        List<BillReminder> reminders = new ArrayList<>();
-        String sql = "SELECT * FROM bill_reminders WHERE user_id = ? ORDER BY status, due_date, due_day, id";
+    public List<Budget> findForUserMonth(int userId, int year, int month, TransactionDAO txDao) throws SQLException {
+        List<Budget> list = new ArrayList<>();
+        String sql = "SELECT b.*, c.name AS category_name FROM budgets b JOIN categories c ON c.id = b.category_id WHERE b.user_id = ? AND b.year = ? AND b.month = ?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, userId);
+            ps.setInt(2, year);
+            ps.setInt(3, month);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    BillReminder reminder = map(rs);
-                    decorateDates(reminder, LocalDate.now());
-                    reminders.add(reminder);
+                    Budget b = map(rs);
+                    BigDecimal spent = txDao.sumExpenseForCategoryMonth(userId, b.getCategoryId(), year, month);
+                    b.setSpentAmount(spent);
+                    list.add(b);
                 }
             }
         }
-        return reminders;
+        return list;
     }
 
-    public List<BillReminder> findDueSoon(int userId, LocalDate fromDate, LocalDate toDate) throws SQLException {
-        List<BillReminder> reminders = new ArrayList<>();
-        for (BillReminder reminder : findByUser(userId)) {
-            if (!reminder.isActive() || reminder.getNextDueDate() == null) {
-                continue;
-            }
-            LocalDate nextDueDate = reminder.getNextDueDate();
-            if ((nextDueDate.isEqual(fromDate) || nextDueDate.isAfter(fromDate))
-                    && (nextDueDate.isEqual(toDate) || nextDueDate.isBefore(toDate))) {
-                reminders.add(reminder);
-            }
-        }
-        reminders.sort(Comparator.comparing(BillReminder::getNextDueDate));
-        return reminders;
-    }
-
-    public BillReminder findById(int id, int userId) throws SQLException {
-        String sql = "SELECT * FROM bill_reminders WHERE id = ? AND user_id = ?";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ps.setInt(2, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    BillReminder reminder = map(rs);
-                    decorateDates(reminder, LocalDate.now());
-                    return reminder;
-                }
-            }
-        }
-        return null;
-    }
-
-    public void insert(BillReminder reminder) throws SQLException {
-        String sql = "INSERT INTO bill_reminders (user_id, bill_name, amount, due_date, due_day, frequency, notes, status) VALUES (?,?,?,?,?,?,?,?)";
+    public void insert(Budget b) throws SQLException {
+        String sql = "INSERT INTO budgets (user_id, category_id, monthly_limit, month, year) VALUES (?,?,?,?,?)";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, reminder.getUserId());
-            ps.setString(2, reminder.getBillName());
-            ps.setBigDecimal(3, reminder.getAmount());
-            ps.setDate(4, reminder.getDueDate() != null ? Date.valueOf(reminder.getDueDate()) : null);
-            ps.setInt(5, reminder.getDueDay());
-            ps.setString(6, reminder.getFrequency());
-            ps.setString(7, reminder.getNotes());
-            ps.setString(8, reminder.getStatus() != null ? reminder.getStatus() : "active");
+            ps.setInt(1, b.getUserId());
+            ps.setInt(2, b.getCategoryId());
+            ps.setBigDecimal(3, b.getMonthlyLimit());
+            ps.setInt(4, b.getMonth());
+            ps.setInt(5, b.getYear());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
-                    reminder.setId(keys.getInt(1));
+                    b.setId(keys.getInt(1));
                 }
             }
         }
     }
 
-    public void update(BillReminder reminder) throws SQLException {
-        String sql = "UPDATE bill_reminders SET bill_name = ?, amount = ?, due_date = ?, due_day = ?, frequency = ?, notes = ?, status = ? WHERE id = ? AND user_id = ?";
+    public void update(int id, int userId, BigDecimal limit) throws SQLException {
+        String sql = "UPDATE budgets SET monthly_limit = ? WHERE id = ? AND user_id = ?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, reminder.getBillName());
-            ps.setBigDecimal(2, reminder.getAmount());
-            ps.setDate(3, reminder.getDueDate() != null ? Date.valueOf(reminder.getDueDate()) : null);
-            ps.setInt(4, reminder.getDueDay());
-            ps.setString(5, reminder.getFrequency());
-            ps.setString(6, reminder.getNotes());
-            ps.setString(7, reminder.getStatus());
-            ps.setInt(8, reminder.getId());
-            ps.setInt(9, reminder.getUserId());
-            ps.executeUpdate();
-        }
-    }
-
-    public void delete(int id, int userId) throws SQLException {
-        String sql = "DELETE FROM bill_reminders WHERE id = ? AND user_id = ?";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ps.setInt(2, userId);
-            ps.executeUpdate();
-        }
-    }
-
-    public void updateStatus(int id, int userId, String status) throws SQLException {
-        String sql = "UPDATE bill_reminders SET status = ? WHERE id = ? AND user_id = ?";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, status);
+            ps.setBigDecimal(1, limit);
             ps.setInt(2, id);
             ps.setInt(3, userId);
             ps.executeUpdate();
         }
     }
 
-    private static BillReminder map(ResultSet rs) throws SQLException {
-        BillReminder reminder = new BillReminder();
-        reminder.setId(rs.getInt("id"));
-        reminder.setUserId(rs.getInt("user_id"));
-        reminder.setBillName(rs.getString("bill_name"));
-        reminder.setAmount(rs.getBigDecimal("amount"));
-        Date dueDate = rs.getDate("due_date");
-        if (dueDate != null) {
-            reminder.setDueDate(dueDate.toLocalDate());
+    public void delete(int id, int userId) throws SQLException {
+        String sql = "DELETE FROM budgets WHERE id = ? AND user_id = ?";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
         }
-        reminder.setDueDay(rs.getInt("due_day"));
-        reminder.setFrequency(rs.getString("frequency"));
-        reminder.setNotes(rs.getString("notes"));
-        reminder.setStatus(rs.getString("status"));
-        Timestamp ts = rs.getTimestamp("created_at");
-        if (ts != null) {
-            reminder.setCreatedAt(ts.toLocalDateTime());
-        }
-        return reminder;
     }
 
-    private static void decorateDates(BillReminder reminder, LocalDate today) {
-        LocalDate nextDueDate = calculateNextDueDate(reminder.getDueDate(), reminder.getDueDay(), reminder.getFrequency(), today);
-        reminder.setNextDueDate(nextDueDate);
-        reminder.setDaysUntilDue(ChronoUnit.DAYS.between(today, nextDueDate));
+    public Budget findById(int id, int userId) throws SQLException {
+        String sql = "SELECT b.*, c.name AS category_name FROM budgets b JOIN categories c ON c.id = b.category_id WHERE b.id = ? AND b.user_id = ?";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+        }
+        return null;
     }
 
-    private static LocalDate calculateNextDueDate(LocalDate dueDate, int dueDay, String frequency, LocalDate today) {
-        if (dueDate == null) {
-            return calculateMonthlyDueDate(today, dueDay);
-        }
-        if ("yearly".equalsIgnoreCase(frequency)) {
-            return calculateYearlyDueDate(today, dueDate);
-        }
-        return calculateMonthlyDueDate(today, dueDate.getDayOfMonth());
-    }
-
-    private static LocalDate calculateMonthlyDueDate(LocalDate today, int dueDay) {
-        int normalizedDueDay = Math.max(1, dueDay);
-        int safeDueDay = Math.min(normalizedDueDay, YearMonth.from(today).lengthOfMonth());
-        LocalDate currentMonthDue = today.withDayOfMonth(safeDueDay);
-        if (currentMonthDue.isBefore(today)) {
-            LocalDate nextMonth = today.plusMonths(1);
-            int nextMonthDay = Math.min(normalizedDueDay, YearMonth.from(nextMonth).lengthOfMonth());
-            return nextMonth.withDayOfMonth(nextMonthDay);
-        }
-        return currentMonthDue;
-    }
-
-    private static LocalDate calculateYearlyDueDate(LocalDate today, LocalDate dueDate) {
-        int targetMonth = dueDate.getMonthValue();
-        int targetDay = dueDate.getDayOfMonth();
-        LocalDate currentYearDue = createSafeDate(today.getYear(), targetMonth, targetDay);
-        if (currentYearDue.isBefore(today)) {
-            return createSafeDate(today.getYear() + 1, targetMonth, targetDay);
-        }
-        return currentYearDue;
-    }
-
-    private static LocalDate createSafeDate(int year, int month, int day) {
-        YearMonth yearMonth = YearMonth.of(year, month);
-        return LocalDate.of(year, month, Math.min(day, yearMonth.lengthOfMonth()));
+    private static Budget map(ResultSet rs) throws SQLException {
+        Budget b = new Budget();
+        b.setId(rs.getInt("id"));
+        b.setUserId(rs.getInt("user_id"));
+        b.setCategoryId(rs.getInt("category_id"));
+        b.setCategoryName(rs.getString("category_name"));
+        b.setMonthlyLimit(rs.getBigDecimal("monthly_limit"));
+        b.setMonth(rs.getInt("month"));
+        b.setYear(rs.getInt("year"));
+        return b;
     }
 }
