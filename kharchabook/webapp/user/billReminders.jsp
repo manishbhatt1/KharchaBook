@@ -1,41 +1,65 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+
+<!-- Set page title -->
 <c:set var="pageTitle" value="Bill Reminders" scope="request"/>
+
+<!-- Include common header -->
 <jsp:include page="/includes/header.jsp"/>
 
+<!-- =========================
+     PAGE HEADER / HERO SECTION
+========================= -->
 <div class="page-hero">
     <div>
         <h1 class="page-title">Recurring bill reminders</h1>
         <p class="lead">Track rent, internet, electricity and other regular payments before late fees happen.</p>
     </div>
     <div class="hero-actions">
+        <!-- Back button -->
         <a href="${pageContext.request.contextPath}/user/dashboard" class="btn btn-secondary">Back to dashboard</a>
     </div>
 </div>
 
+<!-- Flash messages (success/error) -->
 <jsp:include page="/includes/flash.jsp"/>
 
 <div class="layout-split">
+
+    <!-- =========================
+         LEFT SIDE (FORMS + LIST)
+    ========================= -->
     <div class="stack">
+
+        <!-- =========================
+             EDIT REMINDER FORM
+        ========================= -->
         <c:if test="${not empty editReminder}">
             <form method="post" action="${pageContext.request.contextPath}/user/bills" class="card">
                 <h2 class="panel-title">Edit reminder</h2>
+
+                <!-- Hidden fields for update -->
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id" value="${editReminder.id}">
+
+                <!-- Form fields -->
                 <div class="grid">
                     <div class="form-row">
                         <label>Bill name</label>
                         <input type="text" name="billName" value="${editReminder.billName}" required>
                     </div>
+
                     <div class="form-row">
                         <label>Amount (NPR)</label>
                         <input type="number" name="amount" step="0.01" min="0.01" value="${editReminder.amount}" required>
                     </div>
+
                     <div class="form-row">
                         <label>Due date</label>
                         <input type="date" name="dueDate" value="${editReminder.dueDate}" required>
                     </div>
+
                     <div class="form-row">
                         <label>Frequency</label>
                         <select name="frequency" required>
@@ -43,6 +67,7 @@
                             <option value="yearly" ${editReminder.frequency == 'yearly' ? 'selected' : ''}>Yearly</option>
                         </select>
                     </div>
+
                     <div class="form-row">
                         <label>Status</label>
                         <select name="status">
@@ -50,33 +75,45 @@
                             <option value="paused" ${editReminder.status == 'paused' ? 'selected' : ''}>Paused</option>
                         </select>
                     </div>
+
                     <div class="form-row">
                         <label>Notes</label>
                         <textarea name="notes" rows="3">${editReminder.notes}</textarea>
                     </div>
                 </div>
+
+                <!-- Actions -->
                 <button type="submit" class="btn btn-primary">Save reminder</button>
                 <a href="${pageContext.request.contextPath}/user/bills" class="btn btn-secondary">Cancel</a>
             </form>
         </c:if>
 
+        <!-- =========================
+             ADD NEW REMINDER FORM
+        ========================= -->
         <c:if test="${empty editReminder}">
             <form method="post" action="${pageContext.request.contextPath}/user/bills" class="card">
                 <h2 class="panel-title">Add reminder</h2>
+
+                <!-- Hidden action -->
                 <input type="hidden" name="action" value="create">
+
                 <div class="grid">
                     <div class="form-row">
                         <label>Bill name</label>
                         <input type="text" name="billName" placeholder="Rent, NTC, NEA..." required>
                     </div>
+
                     <div class="form-row">
                         <label>Amount (NPR)</label>
                         <input type="number" name="amount" step="0.01" min="0.01" required>
                     </div>
+
                     <div class="form-row">
                         <label>Due date</label>
                         <input type="date" name="dueDate" required>
                     </div>
+
                     <div class="form-row">
                         <label>Frequency</label>
                         <select name="frequency" required>
@@ -84,30 +121,44 @@
                             <option value="yearly">Yearly</option>
                         </select>
                     </div>
+
                     <div class="form-row">
                         <label>Notes</label>
                         <textarea name="notes" rows="3" placeholder="Optional reminder note"></textarea>
                     </div>
                 </div>
+
                 <button type="submit" class="btn btn-primary">Save reminder</button>
             </form>
         </c:if>
 
+        <!-- =========================
+             ALL REMINDERS SECTION
+        ========================= -->
         <div class="soft-panel">
             <h2 class="panel-title">All reminders</h2>
             <p class="small-muted">Paused reminders stay saved but do not show as active.</p>
         </div>
 
+        <!-- Loop through all reminders -->
         <div class="stack">
             <c:forEach var="b" items="${billReminders}">
                 <div class="card">
+
+                    <!-- Reminder header -->
                     <div class="page-hero" style="margin-bottom:0.5rem;align-items:flex-start">
                         <div>
                             <strong>${b.billName}</strong><br>
-                            <span class="small-muted">Chosen date ${b.dueDate} | ${b.frequency} | NPR ${b.amount}</span>
+                            <span class="small-muted">
+                                Chosen date ${b.dueDate} | ${b.frequency} | NPR ${b.amount}
+                            </span>
                         </div>
+
+                        <!-- Status badge -->
                         <div class="role-pill">${b.status}</div>
                     </div>
+
+                    <!-- Next due date -->
                     <p class="small-muted">
                         Next due date:
                         <c:choose>
@@ -117,23 +168,41 @@
                             <c:otherwise>-</c:otherwise>
                         </c:choose>
                     </p>
+
+                    <!-- Notes -->
                     <p>${b.notes}</p>
+
+                    <!-- Action buttons -->
                     <div class="btn-group">
-                        <a class="btn btn-secondary btn-sm" href="${pageContext.request.contextPath}/user/bills?action=edit&id=${b.id}">Edit</a>
-                        <form method="post" action="${pageContext.request.contextPath}/user/bills" style="display:inline" onsubmit="return confirm('Delete this reminder?');">
+                        <!-- Edit -->
+                        <a class="btn btn-secondary btn-sm"
+                           href="${pageContext.request.contextPath}/user/bills?action=edit&id=${b.id}">
+                           Edit
+                        </a>
+
+                        <!-- Delete -->
+                        <form method="post" action="${pageContext.request.contextPath}/user/bills"
+                              style="display:inline"
+                              onsubmit="return confirm('Delete this reminder?');">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="${b.id}">
                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
+
+                        <!-- Toggle active/paused -->
                         <form method="post" action="${pageContext.request.contextPath}/user/bills" style="display:inline">
                             <input type="hidden" name="action" value="toggle">
                             <input type="hidden" name="id" value="${b.id}">
                             <input type="hidden" name="status" value="${b.status}">
-                            <button type="submit" class="btn btn-secondary btn-sm">${b.active ? 'Pause' : 'Activate'}</button>
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                ${b.active ? 'Pause' : 'Activate'}
+                            </button>
                         </form>
                     </div>
                 </div>
             </c:forEach>
+
+            <!-- If no reminders -->
             <c:if test="${empty billReminders}">
                 <div class="soft-panel">
                     <p class="small-muted">No bill reminders added yet.</p>
@@ -142,9 +211,15 @@
         </div>
     </div>
 
+    <!-- =========================
+         RIGHT SIDE (INFO PANELS)
+    ========================= -->
     <div class="stack">
+
+        <!-- Bills due soon -->
         <div class="soft-panel">
             <h2 class="panel-title">Bills due this week</h2>
+
             <c:if test="${not empty dueSoonBills}">
                 <ul class="summary-list">
                     <c:forEach var="b" items="${dueSoonBills}">
@@ -155,11 +230,13 @@
                     </c:forEach>
                 </ul>
             </c:if>
+
             <c:if test="${empty dueSoonBills}">
                 <p class="small-muted">No active bills are due in the next 7 days.</p>
             </c:if>
         </div>
 
+        <!-- Help / Info -->
         <div class="soft-panel">
             <h2 class="panel-title">Why this helps</h2>
             <ul class="summary-list">
@@ -171,4 +248,5 @@
     </div>
 </div>
 
+<!-- Include footer -->
 <jsp:include page="/includes/footer.jsp"/>
