@@ -1,10 +1,51 @@
+# Maven
 target/
 apache-maven-3.9.6/
 .m2/
 .jetty-temp/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Build artifacts
+*.class
+*.war
+*.jar
+*.ear
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts
 *.ps1
 *.bat
 .github/
-*.class
-*.war
-.DS_Store
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
