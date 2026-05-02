@@ -1,5 +1,6 @@
 package com.kharchabook.dao;
 
+import com.kharchabook.model.RememberMeToken;
 import com.kharchabook.util.DBUtil;
 
 import java.sql.*;
@@ -8,7 +9,7 @@ import java.time.LocalDateTime;
 public class RememberMeTokenDAO {
     
     public TokenRecord findBySelector(String selector) throws SQLException {
-        String sql = "SELECT id, user_id, token_hash, expires_at FROM remember_tokens WHERE selector = ?";
+        String sql = "SELECT id, user_id, validator, expires_at FROM remember_me_tokens WHERE selector = ?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, selector);
@@ -16,7 +17,7 @@ public class RememberMeTokenDAO {
                 if (rs.next()) {
                     Timestamp expiresTs = rs.getTimestamp("expires_at");
                     LocalDateTime expiresAt = expiresTs != null ? expiresTs.toLocalDateTime() : null;
-                    return new TokenRecord(rs.getInt("id"), rs.getInt("user_id"), rs.getString("token_hash"), expiresAt);
+                    return new TokenRecord(rs.getInt("id"), rs.getInt("user_id"), rs.getString("validator"), expiresAt);
                 }
             }
         }
@@ -24,7 +25,7 @@ public class RememberMeTokenDAO {
     }
 
     public void deleteBySelector(String selector) throws SQLException {
-        String sql = "DELETE FROM remember_tokens WHERE selector = ?";
+        String sql = "DELETE FROM remember_me_tokens WHERE selector = ?";
         try (Connection c = DBUtil.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, selector);
@@ -32,36 +33,21 @@ public class RememberMeTokenDAO {
         }
     }
 
-    public void updateTokenHashAndExpiry(int id, String tokenHash, LocalDateTime expiry) throws SQLException {
-        String sql = "UPDATE remember_tokens SET token_hash = ?, expires_at = ? WHERE id = ?";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, tokenHash);
-            ps.setTimestamp(2, Timestamp.valueOf(expiry));
-            ps.setInt(3, id);
-            ps.executeUpdate();
+    private static RememberMeToken map(ResultSet rs) throws SQLException {
+        RememberMeToken token = new RememberMeToken();
+        token.setId(rs.getInt("id"));
+        token.setUserId(rs.getInt("user_id"));
+        token.setSelector(rs.getString("selector"));
+        token.setValidator(rs.getString("validator"));
+        Timestamp ts = rs.getTimestamp("expires_at");
+        if (ts != null) {
+            token.setExpiresAt(ts.toLocalDateTime());
         }
-    }
-
-    public void deleteExpired() throws SQLException {
-        String sql = "DELETE FROM remember_tokens WHERE expires_at < NOW()";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.executeUpdate();
+        ts = rs.getTimestamp("created_at");
+        if (ts != null) {
+            token.setCreatedAt(ts.toLocalDateTime());
         }
-    }
-
-    public void upsert(int userId, String selector, String tokenHash, LocalDateTime expiresAt) throws SQLException {
-        String sql = "INSERT INTO remember_tokens (user_id, selector, token_hash, expires_at) VALUES (?, ?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), token_hash = VALUES(token_hash), expires_at = VALUES(expires_at)";
-        try (Connection c = DBUtil.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, userId);
-            ps.setString(2, selector);
-            ps.setString(3, tokenHash);
-            ps.setTimestamp(4, Timestamp.valueOf(expiresAt));
-            ps.executeUpdate();
-        }
+        return token;
     }
 
     public static class TokenRecord {
