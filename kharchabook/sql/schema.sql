@@ -6,6 +6,8 @@ USE kharchabook;
 
 DROP TABLE IF EXISTS bill_reminders;
 DROP TABLE IF EXISTS wishlist;
+DROP TABLE IF EXISTS fees;
+DROP TABLE IF EXISTS remittance_allocations;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS budgets;
 DROP TABLE IF EXISTS savings_goals;
@@ -110,6 +112,39 @@ CREATE TABLE bill_reminders (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_bill_user_status (user_id, status),
     INDEX idx_bill_user_due_day (user_id, due_day)
+) ENGINE=InnoDB;
+
+CREATE TABLE fees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    fee_name VARCHAR(100) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    due_date DATE NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_fee_user_date (user_id, due_date),
+    INDEX idx_fee_user_status (user_id, status),
+    INDEX idx_fee_due_date (due_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE remittance_allocations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    total_amount DECIMAL(15,2) NOT NULL,
+    rent_amount DECIMAL(15,2) DEFAULT 0,
+    food_amount DECIMAL(15,2) DEFAULT 0,
+    savings_amount DECIMAL(15,2) DEFAULT 0,
+    other_amount DECIMAL(15,2) DEFAULT 0,
+    description TEXT,
+    allocation_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_remittance_user_date (user_id, allocation_date),
+    INDEX idx_remittance_user_status (user_id, status)
 ) ENGINE=InnoDB;
 
 CREATE TABLE wishlist (

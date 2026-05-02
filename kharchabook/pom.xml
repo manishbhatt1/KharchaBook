@@ -90,6 +90,7 @@
                 <artifactId>jetty-maven-plugin</artifactId>
                 <version>9.4.52.v20230823</version>
                 <configuration>
+                    <webAppSourceDirectory>${project.basedir}/webapp</webAppSourceDirectory>
                     <webApp>
                         <contextPath>/kharchabook</contextPath>
                         <!-- Keep JSP temp files outside /target so `mvn clean` won't break running JSPs -->

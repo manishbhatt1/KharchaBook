@@ -38,10 +38,8 @@
         <nav>
             <ul>
 
-                <!-- Role-based navigation rendering -->
                 <c:choose>
 
-                    <!-- ===== ADMIN MENU ===== -->
                     <c:when test="${sessionScope.userRole == 'ADMIN'}">
                         <li><a href="${pageContext.request.contextPath}/admin/dashboard">Dashboard</a></li>
                         <li><a href="${pageContext.request.contextPath}/admin/users">Users</a></li>
@@ -57,7 +55,6 @@
                         <li><a href="${pageContext.request.contextPath}/logout">Logout</a></li>
                     </c:when>
 
-                    <!-- ===== USER MENU ===== -->
                     <c:when test="${sessionScope.userRole == 'USER'}">
                         <li><a href="${pageContext.request.contextPath}/user/dashboard">Dashboard</a></li>
                         <li><a href="${pageContext.request.contextPath}/user/transactions">Transactions</a></li>
@@ -76,7 +73,6 @@
                         <li><a href="${pageContext.request.contextPath}/logout">Logout</a></li>
                     </c:when>
 
-                    <!-- ===== GUEST (NOT LOGGED IN) ===== -->
                     <c:otherwise>
                         <li><a href="${pageContext.request.contextPath}/login.jsp">Login</a></li>
                         <li><a href="${pageContext.request.contextPath}/register.jsp">Register</a></li>
