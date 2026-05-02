@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <c:set var="pageTitle" value="Register" scope="request"/>
+<c:set var="fullBleed" value="true" scope="request"/>
 <jsp:include page="/includes/header.jsp"/>
 <div class="auth-shell">
     <div class="auth-wrapper">

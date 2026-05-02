@@ -89,4 +89,4 @@
 <!-- =========================
      MAIN CONTENT WRAPPER
 ========================= -->
-<main class="wrap">
+<main class="${fullBleed ? 'wrap-full' : 'wrap'}">
