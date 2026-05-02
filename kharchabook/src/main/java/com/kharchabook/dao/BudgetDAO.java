@@ -1,13 +1,6 @@
 package com.kharchabook.dao;
 
 import com.kharchabook.model.Budget;
-
-public class BudgetDAO {
-    
-}
-package com.kharchabook.dao;
-
-import com.kharchabook.model.Budget;
 import com.kharchabook.util.DBUtil;
 
 import java.math.BigDecimal;

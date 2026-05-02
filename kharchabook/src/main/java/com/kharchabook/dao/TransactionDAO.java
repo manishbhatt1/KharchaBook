@@ -307,4 +307,21 @@ public class TransactionDAO {
 
         return t;
     }
+
+    public BigDecimal sumExpenseForCategoryMonth(int userId, int categoryId, int year, int month) throws SQLException {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND category_id = ? AND type = 'EXPENSE' AND YEAR(transaction_date) = ? AND MONTH(transaction_date) = ?";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, categoryId);
+            ps.setInt(3, year);
+            ps.setInt(4, month);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBigDecimal(1);
+                }
+            }
+        }
+        return BigDecimal.ZERO;
+    }
 }
