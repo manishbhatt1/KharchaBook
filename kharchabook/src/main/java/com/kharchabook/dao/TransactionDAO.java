@@ -169,6 +169,51 @@ public class TransactionDAO {
         return sumTypeForMonth(userId, year, month, "expense");
     }
 
+    public BigDecimal totalIncomeYearMonth(int userId, int year, int month) throws SQLException {
+        return sumIncomeForMonth(userId, year, month);
+    }
+
+    public BigDecimal totalExpenseYearMonth(int userId, int year, int month) throws SQLException {
+        return sumExpenseForMonth(userId, year, month);
+    }
+
+    public int countTotalInSystem() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM transactions";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public int topCategoryByTransactionCount() throws SQLException {
+        String sql = "SELECT category_id FROM transactions GROUP BY category_id ORDER BY COUNT(*) DESC, category_id ASC LIMIT 1";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public List<TransactionRecord> findRecent(int userId, int limit) throws SQLException {
+        List<TransactionRecord> list = new ArrayList<>();
+        String sql = "SELECT t.*, c.name AS category_name FROM transactions t " +
+                "JOIN categories c ON c.id = t.category_id " +
+                "WHERE t.user_id = ? ORDER BY t.transaction_date DESC, t.id DESC LIMIT ?";
+
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, Math.max(1, limit));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapJoin(rs));
+                }
+            }
+        }
+        return list;
+    }
+
     /**
      * Sum expense for a specific day.
      */
@@ -306,5 +351,22 @@ public class TransactionDAO {
         }
 
         return t;
+    }
+
+    public BigDecimal sumExpenseForCategoryMonth(int userId, int categoryId, int year, int month) throws SQLException {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND category_id = ? AND type = 'expense' AND YEAR(transaction_date) = ? AND MONTH(transaction_date) = ?";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, categoryId);
+            ps.setInt(3, year);
+            ps.setInt(4, month);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBigDecimal(1);
+                }
+            }
+        }
+        return BigDecimal.ZERO;
     }
 }

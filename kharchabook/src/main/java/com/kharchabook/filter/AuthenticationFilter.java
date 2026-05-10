@@ -83,7 +83,7 @@ public class AuthenticationFilter implements Filter {
             }
 
             User u = userDAO.findById(record.userId);
-            if (u == null || !"APPROVED".equals(u.getStatus())) {
+            if (u == null || !"ACTIVE".equals(u.getStatus())) {
                 rememberMeTokenDAO.deleteBySelector(selector);
                 clearCookie(resp, req.getContextPath(), REMEMBER_COOKIE);
                 return false;
