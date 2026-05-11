@@ -1,5 +1,22 @@
 package com.kharchabook.servlet;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
 import com.kharchabook.dao.BillReminderDAO;
 import com.kharchabook.dao.BudgetDAO;
 import com.kharchabook.dao.CategoryDAO;
@@ -14,22 +31,12 @@ import com.kharchabook.model.TransactionRecord;
 import com.kharchabook.util.SessionKeys;
 import com.kharchabook.util.ValidationUtil;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+/**
+ * Servlet handling the user dashboard page.
+ *
+ * Aggregates and displays financial data including monthly income/expenses,
+ * budgets, savings goals, bill reminders, and affordability checks.
+ */
 @WebServlet("/user/dashboard")
 public class UserDashboardServlet extends HttpServlet {
 
@@ -42,12 +49,17 @@ public class UserDashboardServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // Retrieve the current user session and extract the user ID.
         HttpSession session = req.getSession();
         int userId = (Integer) session.getAttribute(SessionKeys.USER_ID);
+
+        // Get the current date for monthly calculations.
         LocalDate today = LocalDate.now();
         int y = today.getYear();
         int m = today.getMonthValue();
+
         try {
+            // Calculate monthly income, expenses, and net balance.
             BigDecimal income = transactionDAO.sumIncomeForMonth(userId, y, m);
             BigDecimal expense = transactionDAO.sumExpenseForMonth(userId, y, m);
             BigDecimal netBalance = income.subtract(expense);
@@ -55,15 +67,18 @@ public class UserDashboardServlet extends HttpServlet {
             req.setAttribute("expenseMonth", expense);
             req.setAttribute("netBalance", netBalance);
 
+            // Calculate today's expenses and category count.
             BigDecimal todayExpense = transactionDAO.sumExpenseForDay(userId, today);
             int todayCategoryCount = transactionDAO.countExpenseCategoriesForDay(userId, today);
             req.setAttribute("todayExpense", todayExpense);
             req.setAttribute("todayCategoryCount", todayCategoryCount);
 
+            // Calculate reserved amount from active savings goals and available balance after reserves.
             BigDecimal reservedAmount = savingsGoalDAO.sumSavedAmountByStatus(userId, "active");
             req.setAttribute("reservedAmount", reservedAmount);
             req.setAttribute("availableAfterReserve", netBalance.subtract(reservedAmount));
 
+            // Fetch bill reminders due in the next week.
             List<BillReminder> dueSoonBills = billReminderDAO.findDueSoon(userId, today, today.plusDays(7));
             req.setAttribute("dueSoonBills", dueSoonBills);
             if (!dueSoonBills.isEmpty()) {
