@@ -21,6 +21,13 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
+/**
+ * Filter that ensures only authenticated users can access protected pages.
+ *
+ * If the session does not already contain a logged-in user, this filter
+ * attempts a "remember me" login using a secure cookie and persisted token.
+ * If authentication still fails, the user is redirected to the login page.
+ */
 public class AuthenticationFilter implements Filter {
 
     private static final String REMEMBER_COOKIE = "KB_REMEMBER";
@@ -30,10 +37,12 @@ public class AuthenticationFilter implements Filter {
 
     @Override
     public void init(FilterConfig filterConfig) {
+        // No initialization required for this filter.
     }
 
     @Override
     public void destroy() {
+        // No cleanup required when the filter is destroyed.
     }
 
     @Override
@@ -41,18 +50,26 @@ public class AuthenticationFilter implements Filter {
             throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
+
+        // Check for an existing authenticated session.
         HttpSession session = req.getSession(false);
         Integer userId = session == null ? null : (Integer) session.getAttribute(SessionKeys.USER_ID);
+
         if (userId == null) {
+            // No session user found, try remember-me login before redirecting.
             if (tryRememberMe(req, resp)) {
                 chain.doFilter(request, response);
                 return;
             }
+
+            // Not authenticated, preserve an error message and redirect to login.
             session = req.getSession(true);
             session.setAttribute(SessionKeys.FLASH_ERROR, "Please log in to access this page.");
             resp.sendRedirect(req.getContextPath() + "/login.jsp");
             return;
         }
+
+        // Already authenticated; continue with the request.
         chain.doFilter(request, response);
     }
 
@@ -61,20 +78,27 @@ public class AuthenticationFilter implements Filter {
         if (raw == null || raw.trim().isEmpty()) {
             return false;
         }
+
+        // Remember cookie format: selector:validator
         String[] parts = raw.split(":", 2);
         if (parts.length != 2) {
             clearCookie(resp, req.getContextPath(), REMEMBER_COOKIE);
             return false;
         }
+
         String selector = parts[0];
         String validator = parts[1];
         try {
             RememberMeTokenDAO.TokenRecord record = rememberMeTokenDAO.findBySelector(selector);
+
+            // Validate token record existence and expiry.
             if (record == null || record.expiresAt == null || record.expiresAt.isBefore(LocalDateTime.now())) {
                 rememberMeTokenDAO.deleteBySelector(selector);
                 clearCookie(resp, req.getContextPath(), REMEMBER_COOKIE);
                 return false;
             }
+
+            // Compare hashed validator to stored token hash.
             String validatorHash = PasswordUtil.sha256Hex(validator);
             if (record.tokenHash == null || !record.tokenHash.equalsIgnoreCase(validatorHash)) {
                 rememberMeTokenDAO.deleteBySelector(selector);
@@ -89,7 +113,7 @@ public class AuthenticationFilter implements Filter {
                 return false;
             }
 
-            // Rotate validator to reduce replay risk.
+            // Rotate validator token to reduce replay risk.
             String newValidator = TokenUtil.randomUrlToken(32);
             String newHash = PasswordUtil.sha256Hex(newValidator);
             LocalDateTime newExpiry = LocalDateTime.now().plusDays(REMEMBER_DAYS);
@@ -102,6 +126,7 @@ public class AuthenticationFilter implements Filter {
             cookie.setMaxAge(REMEMBER_DAYS * 24 * 60 * 60);
             resp.addCookie(cookie);
 
+            // Populate session with authenticated user details.
             HttpSession session = req.getSession(true);
             session.setAttribute(SessionKeys.USER_ID, u.getId());
             session.setAttribute(SessionKeys.USER_ROLE, u.getRole());
@@ -109,6 +134,7 @@ public class AuthenticationFilter implements Filter {
             session.setAttribute(SessionKeys.USER_EMAIL, u.getEmail());
             return true;
         } catch (SQLException | IllegalStateException e) {
+            // Any failure during remember-me processing should be treated as a login failure.
             return false;
         }
     }
