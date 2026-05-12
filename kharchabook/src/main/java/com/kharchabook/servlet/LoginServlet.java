@@ -75,8 +75,13 @@ public class LoginServlet extends HttpServlet {
                 return;
             }
             
+            // Debug logging
+            System.out.println("DEBUG: User role = " + u.getRole());
+            System.out.println("DEBUG: Requested role = " + requestedRole);
+            
             // Additional validation: Ensure user cannot access admin features if not admin role
             if (!"ADMIN".equals(u.getRole()) && "ADMIN".equals(requestedRole)) {
+                System.out.println("DEBUG: Blocking non-admin from admin access");
                 req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Access denied. Your account does not have admin privileges.");
                 resp.sendRedirect(req.getContextPath() + "/login.jsp");
                 return;
@@ -84,10 +89,13 @@ public class LoginServlet extends HttpServlet {
             
             // Prevent admins from logging in as regular users
             if ("ADMIN".equals(u.getRole()) && !"ADMIN".equals(requestedRole)) {
+                System.out.println("DEBUG: Blocking admin from regular user access");
                 req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Administrators cannot login as regular users. Please select 'Administrator' to access your account.");
                 resp.sendRedirect(req.getContextPath() + "/login.jsp");
                 return;
             }
+            
+            System.out.println("DEBUG: All validations passed, proceeding with login");
             HttpSession session = req.getSession(true);
             session.setAttribute(SessionKeys.USER_ID, u.getId());
             session.setAttribute(SessionKeys.USER_ROLE, u.getRole());
