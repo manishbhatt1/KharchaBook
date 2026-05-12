@@ -37,6 +37,15 @@
                                autocomplete="off" placeholder="Your password"/>
                     </div>
 
+                    <div class="form-row">
+                        <label for="role">Login Type</label>
+                        <select id="role" name="role" class="role-select">
+                            <option value="">Regular User</option>
+                            <option value="ADMIN">Administrator</option>
+                        </select>
+                        <small class="form-note">Select "Administrator" only if you have admin privileges</small>
+                    </div>
+
                     <div class="login-options">
                         <label class="remember-me">
                             <input type="checkbox" name="remember" id="remember"/>

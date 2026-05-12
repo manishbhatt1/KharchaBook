@@ -41,12 +41,22 @@ public class LoginServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String login = req.getParameter("login");
         String password = req.getParameter("password");
+        String requestedRole = req.getParameter("role"); // Check if user is trying to login as admin
         boolean remember = req.getParameter("remember") != null;
+        
         if (login == null || password == null || login.trim().isEmpty()) {
             req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "This field is required. Please fill in all required fields before submitting.");
             resp.sendRedirect(req.getContextPath() + "/login.jsp");
             return;
         }
+        
+        // Prevent regular users from attempting admin login
+        if ("ADMIN".equals(requestedRole) && login != null && !login.trim().isEmpty()) {
+            req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Access denied. You cannot request admin role access.");
+            resp.sendRedirect(req.getContextPath() + "/login.jsp");
+            return;
+        }
+        
         try {
             User u = userDAO.findByEmailOrPhone(login.trim());
             if (u == null || !PasswordUtil.matches(password, u.getPassword())) {
@@ -61,6 +71,13 @@ public class LoginServlet extends HttpServlet {
             }
             if ("BLOCKED".equals(u.getStatus())) {
                 req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Your account has been blocked. Contact support.");
+                resp.sendRedirect(req.getContextPath() + "/login.jsp");
+                return;
+            }
+            
+            // Additional validation: Ensure user cannot access admin features if not admin role
+            if (!"ADMIN".equals(u.getRole()) && requestedRole != null && "ADMIN".equals(requestedRole)) {
+                req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Access denied. Your account does not have admin privileges.");
                 resp.sendRedirect(req.getContextPath() + "/login.jsp");
                 return;
             }

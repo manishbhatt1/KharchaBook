@@ -239,6 +239,18 @@ textarea {
     font: inherit;
 }
 
+.role-select {
+    background-color: #f8f4f0;
+    border: 1px solid #e2d1f0;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.role-select:focus {
+    border-color: var(--primary);
+    outline: 2px solid #e7c8b8;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
