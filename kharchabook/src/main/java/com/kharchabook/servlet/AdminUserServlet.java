@@ -50,13 +50,13 @@ public class AdminUserServlet extends HttpServlet {
         int id = Integer.parseInt(req.getParameter("id"));
         try {
             if ("approve".equals(action)) {
-                userDAO.setStatus(id, "APPROVED");
+                userDAO.setStatus(id, "ACTIVE");
                 session.setAttribute(SessionKeys.FLASH_SUCCESS, "User approved.");
             } else if ("block".equals(action)) {
                 userDAO.setStatus(id, "BLOCKED");
                 session.setAttribute(SessionKeys.FLASH_SUCCESS, "User blocked.");
             } else if ("unblock".equals(action)) {
-                userDAO.setStatus(id, "APPROVED");
+                userDAO.setStatus(id, "ACTIVE");
                 session.setAttribute(SessionKeys.FLASH_SUCCESS, "User unblocked.");
             }
             resp.sendRedirect(req.getContextPath() + "/admin/users");
