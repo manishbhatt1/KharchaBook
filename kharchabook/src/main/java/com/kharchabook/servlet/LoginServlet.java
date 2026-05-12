@@ -82,16 +82,10 @@ public class LoginServlet extends HttpServlet {
                 return;
             }
             
-            // Prevent admins from accessing user dashboard - always redirect admins to admin dashboard
-            if ("ADMIN".equals(u.getRole())) {
-                req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Administrators must use the admin dashboard. Redirecting to admin panel.");
-                // Set session attributes first, then redirect
-                HttpSession session = req.getSession(true);
-                session.setAttribute(SessionKeys.USER_ID, u.getId());
-                session.setAttribute(SessionKeys.USER_ROLE, u.getRole());
-                session.setAttribute(SessionKeys.USER_NAME, u.getFullName());
-                session.setAttribute(SessionKeys.USER_EMAIL, u.getEmail());
-                resp.sendRedirect(req.getContextPath() + "/admin/dashboard");
+            // Prevent admins from logging in as regular users
+            if ("ADMIN".equals(u.getRole()) && (requestedRole == null || "".equals(requestedRole))) {
+                req.getSession(true).setAttribute(SessionKeys.FLASH_ERROR, "Administrators cannot login as regular users. Please select 'Administrator' to access your account.");
+                resp.sendRedirect(req.getContextPath() + "/login.jsp");
                 return;
             }
             HttpSession session = req.getSession(true);
